@@ -1,5 +1,4 @@
 start_time <- Sys.time()
-setwd("~/Desktop/P9")
 
 library(tsDyn)
 library(data.table)
