@@ -222,7 +222,6 @@ for(r in 1:k){
 }
 
 m <- max(mminhan)
-m # 3
 
 #save.image("myTVCData.RData", compress = "xz")
 
