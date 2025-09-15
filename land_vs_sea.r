@@ -224,9 +224,7 @@ for(r in 1:k){
 m <- max(mminhan)
 m # 3
 
-# getwd()
-save.image("myTVCData.RData", compress = "xz")
-
+#save.image("myTVCData.RData", compress = "xz")
 
 end_time <- Sys.time()
 time <- end_time - start_time
