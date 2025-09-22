@@ -21,7 +21,7 @@ print("p-value (first few rows):")
 print(lrtvcpv[1:min(10,nrow(lrtvcpv)), , drop = FALSE])
 
 
-
+################################
 # Assume betat is your n_obs x (k*m) matrix from tvcoint
 # k = 2 (land, sea), m = chosen Chebyshev dimension (here 3)
 n_obs <- nrow(betat)

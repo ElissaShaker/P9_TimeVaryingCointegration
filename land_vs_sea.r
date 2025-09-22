@@ -2,7 +2,9 @@ start_time <- Sys.time()
 
 library(tsDyn)
 library(data.table)
-
+####################
+#### Land vs sea ###
+####################
 # Read your CSV files
 berkeley <- fread("data/Land vs sea/Berkeley_GlobTemp.csv")
 setnames(
@@ -32,6 +34,57 @@ y <- cbind(y1, y2)
 y <- as.data.table(y)
 y <- na.omit(y) # Remove rows with missing values
 
+# Convert to time series
+start_year <- min(merged_data$year)
+start_month <- min(merged_data$month[merged_data$year == start_year])
+y_ts <- ts(y, start = c(start_year, start_month), frequency = 12)
+
+# Plot Berkeley land anomalies
+plot(y_ts[,1], type = "l",
+     ylab = "Temperature Anomaly (°C)", xlab = "Year",
+     main = "Berkeley Land Temperature Anomalies")
+
+# Plot HadSST sea anomalies
+plot(y_ts[,2], type = "l",
+     ylab = "Temperature Anomaly (°C)", xlab = "Year",
+     main = "HadSST Sea Temperature Anomalies")
+
+####################
+#### CET vs SOI ####
+####################
+CET <- fread("data/CET vs SOI/CET.txt")
+SOI <- fread("data/CET vs SOI/SOI.csv")
+setnames(SOI, names(SOI), names(CET))
+
+merged_data <- merge(x = CET, y = SOI, by = "Year")
+y1 <- merged_data$Annual.x
+y2 <- merged_data$Annual.y
+
+# Bind into a matrix
+y <- cbind(y1, y2)
+y <- as.data.table(y)
+
+# Missing values represented by -99.990
+y[y == -99.990] <- NA
+y <- na.omit(y) # Remove rows with missing values
+
+# Convert to time series
+start_year <- min(merged_data$Year)  # first year in merged data
+y_ts <- ts(y, start = start_year, frequency = 1)  # annual frequency
+
+# Plot CET
+plot(y_ts[,1], type = "l",
+     ylab = "CET (°C)", xlab = "Year",
+     main = "Central England Temperature (CET)")
+
+# Plot SOI
+plot(y_ts[,2], type = "l", 
+     ylab = "SOI", xlab = "Year",
+     main = "Southern Oscillation Index (SOI)")
+
+##############
+#### code ####
+##############
 
 n <- nrow(y)
 # Number of endogenous variables in the analysis
