@@ -4,7 +4,7 @@ library(tsDyn)
 library(data.table)
 
 # Read your CSV files
-berkeley <- fread("data/Berkeley_GlobTemp.csv")
+berkeley <- fread("data/Land vs sea/Berkeley_GlobTemp.csv")
 setnames(
   berkeley,
   old = names(berkeley),
@@ -18,7 +18,7 @@ setnames(
   )
 )
 
-hadsst <- fread("data/HadSST.4.1.0.0_monthly_GLOBE.csv")
+hadsst <- fread("data/Land vs sea/HadSST.4.1.0.0_monthly_GLOBE.csv")
 
 # Merge datasets by year and month
 merged_data <- merge(berkeley, hadsst, by = c("year", "month"))
