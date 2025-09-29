@@ -2,90 +2,67 @@ start_time <- Sys.time()
 
 library(tsDyn)
 library(data.table)
-####################
-#### Land vs sea ###
-####################
-# Read your CSV files
-# berkeley <- fread("data/Land vs sea/Berkeley_GlobTemp.csv")
-# setnames(
-#   berkeley,
-#   old = names(berkeley),
-#   new = c(
-#     "year","month",
-#     "anomaly_monthly","unc_monthly",
-#     "anomaly_annual","unc_annual",
-#     "anomaly_5yr","unc_5yr",
-#     "anomaly_10yr","unc_10yr",
-#     "anomaly_20yr","unc_20yr"
-#   )
-# )
-# 
-# hadsst <- fread("data/Land vs sea/HadSST.4.1.0.0_monthly_GLOBE.csv")
-# 
-# # Merge datasets by year and month
-# merged_data <- merge(berkeley, hadsst, by = c("year", "month"))
-# 
-# # Example: pick Berkeley and HadSST monthly anomalies
-# y1 <- merged_data$anomaly_monthly
-# y2 <- merged_data$anomaly
-# 
-# # Bind into a matrix
-# y <- cbind(y1, y2)
-# y <- as.data.table(y)
-# y <- na.omit(y) # Remove rows with missing values
-# 
-# # Convert to time series
-# start_year <- min(merged_data$year)
-# start_month <- min(merged_data$month[merged_data$year == start_year])
-# y_ts <- ts(y, start = c(start_year, start_month), frequency = 12)
-# 
-# # Plot Berkeley land anomalies
-# plot(y_ts[,1], type = "l",
-#      ylab = "Temperature Anomaly (°C)", xlab = "Year",
-#      main = "Berkeley Land Temperature Anomalies")
-# 
-# # Plot HadSST sea anomalies
-# plot(y_ts[,2], type = "l",
-#      ylab = "Temperature Anomaly (°C)", xlab = "Year",
-#      main = "HadSST Sea Temperature Anomalies")
+library(readxl)
 
 ####################
 #### CET vs SOI ####
 ####################
-CET <- fread("data/CET vs SOI/CET.txt")
-SOI <- fread("data/CET vs SOI/SOI.csv")
-setnames(SOI, names(SOI), names(CET))
+excel_sheets("data/Bennedsen/Global_Carbon_Budget_2024_v1.0-1.xlsx")
+carbon <- read_excel("data/Bennedsen/Global_Carbon_Budget_2024_v1.0-1.xlsx",
+                     sheet = "Global Carbon Budget",
+                     range = "A22:H87"
+                     )
+carbon <- na.omit(carbon)
+names(carbon)
 
-merged_data <- merge(x = CET, y = SOI, by = "Year")
-y1 <- merged_data$Annual.x
-y2 <- merged_data$Annual.y
+###############################
+#### Construct eq (1): linear regression for sinks ####
+###############################
+# Land sink: S^L_t = a1 + b1 * C_t + X1_t
+lm_StL <- lm(`land sink` ~ `atmospheric growth`, data = carbon)
+a1 <- coef(lm_StL)[1]
+b1 <- coef(lm_StL)[2]
+X1 <- residuals(lm_StL)  # residuals
 
-# Bind into a matrix
-y <- cbind(y1, y2)
+# Ocean sink: S^O_t = a2 + b2 * C_t + X2_t
+lm_StO <- lm(`ocean sink` ~ `atmospheric growth`, data = carbon)
+a2 <- coef(lm_StO)[1]
+b2 <- coef(lm_StO)[2]
+X2 <- residuals(lm_StO)  # residuals
+
+###############################
+#### Construct eq (3): carbon budget ####
+###############################
+# Construct variables for TVC
+Ct  <- carbon$`atmospheric growth`
+Et  <- carbon$`fossil emissions excluding carbonation` + carbon$`land-use change emissions`
+StL <- carbon$`land sink`
+StO <- carbon$`ocean sink`
+
+# Lagged concentration for Eq (3)
+Ct_lag <- c(NA, Ct[-length(Ct)])
+
+# Carbon budget residual X4_t
+X4 <- Ct - (Ct_lag + Et - StL - StO)
+
+###############################
+#### Combine into matrix y ####
+###############################
+y <- cbind(Ct, Et, StL, StO)
 y <- as.data.table(y)
 
-# Missing values represented by -99.990
-y[y == -99.990] <- NA
-y <- na.omit(y) # Remove rows with missing values
+# Remove NAs created by lag
+y <- na.omit(y)
 
-# Convert to time series
-start_year <- min(merged_data$Year)  # first year in merged data
-y_ts <- ts(y, start = start_year, frequency = 1)  # annual frequency
-
-# Plot CET
-ts.plot(y_ts[,1], type = "l",
-     ylab = "CET (°C)", xlab = "Year",
-     main = "Central England Temperature (CET)")
-
-# Plot SOI
-ts.plot(y_ts[,2], type = "l", 
-     ylab = "SOI", xlab = "Year",
-     main = "Southern Oscillation Index (SOI)")
+# Basic time series info
+start_year <- min(carbon$Year)
+y_ts <- ts(y, start = start_year, frequency = 1)
+#ts.plot(y_ts)
+#plot(y_ts)
 
 ##############
 #### code ####
 ##############
-
 n <- nrow(y)
 # Number of endogenous variables in the analysis
 k <- ncol(y)
@@ -220,7 +197,6 @@ mmax <- round(n/10)	# maximum dimension of Chebishev Polynomials
 p <- 1;			
 
 # Setting up the matrices to hold the values
-
 lrtvc <- matrix(nrow = mmax, ncol = k);	     # TVC Stat (row) m=1,...,mmax and (col) r=1,..,k
 lrtvcpv <- matrix(nrow = mmax, ncol = k);	     # P-values using the Asymp Distr (chisquare(mrk))
 betat <- matrix(nrow = n-p-1, ncol = k*mmax)  # b_t for r=1.  (row) i= observation; Cols 1 up to k= b1~...~bk (m=1); Cols k+1 up to 2k=b1~...~bk (m=2); ...
